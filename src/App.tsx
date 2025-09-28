@@ -36,6 +36,7 @@ const App = () => (
             <Route path="/dashboard/admin" element={<AdminDashboard />} />
             <Route path="/dashboard/guru" element={<TeacherDashboard />} />
             <Route path="/dashboard/siswa" element={<StudentDashboard />} />
+            <Route path="/dashboard/orang-tua" element={<ParentDashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

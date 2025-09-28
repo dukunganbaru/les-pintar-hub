@@ -56,6 +56,60 @@ export type Database = {
         }
         Relationships: []
       }
+      bookings: {
+        Row: {
+          booking_date: string
+          created_at: string
+          duration_hours: number
+          hourly_rate: number
+          id: string
+          notes: string | null
+          parent_id: string
+          status: Database["public"]["Enums"]["booking_status"]
+          student_id: string
+          student_notes: string | null
+          subject: string
+          total_amount: number
+          tutor_id: string
+          tutor_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string
+          duration_hours?: number
+          hourly_rate: number
+          id?: string
+          notes?: string | null
+          parent_id: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          student_id: string
+          student_notes?: string | null
+          subject: string
+          total_amount: number
+          tutor_id: string
+          tutor_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string
+          duration_hours?: number
+          hourly_rate?: number
+          id?: string
+          notes?: string | null
+          parent_id?: string
+          status?: Database["public"]["Enums"]["booking_status"]
+          student_id?: string
+          student_notes?: string | null
+          subject?: string
+          total_amount?: number
+          tutor_id?: string
+          tutor_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lessons: {
         Row: {
           created_at: string
@@ -121,6 +175,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      parents: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string
+          created_at: string
+          id: string
+          parent_id: string
+          payment_method: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          created_at?: string
+          id?: string
+          parent_id: string
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          created_at?: string
+          id?: string
+          parent_id?: string
+          payment_method?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -193,27 +310,33 @@ export type Database = {
       }
       reviews: {
         Row: {
+          booking_id: string | null
           created_at: string
           id: string
           lesson_id: string
+          parent_id: string | null
           rating: number
           review_text: string | null
           student_id: string
           teacher_id: string
         }
         Insert: {
+          booking_id?: string | null
           created_at?: string
           id?: string
           lesson_id: string
+          parent_id?: string | null
           rating: number
           review_text?: string | null
           student_id: string
           teacher_id: string
         }
         Update: {
+          booking_id?: string | null
           created_at?: string
           id?: string
           lesson_id?: string
+          parent_id?: string | null
           rating?: number
           review_text?: string | null
           student_id?: string
@@ -249,6 +372,7 @@ export type Database = {
           education_level: Database["public"]["Enums"]["education_level"]
           grade: string | null
           id: string
+          parent_id: string | null
           parent_name: string | null
           parent_phone: string | null
           profile_id: string
@@ -261,6 +385,7 @@ export type Database = {
           education_level: Database["public"]["Enums"]["education_level"]
           grade?: string | null
           id?: string
+          parent_id?: string | null
           parent_name?: string | null
           parent_phone?: string | null
           profile_id: string
@@ -273,6 +398,7 @@ export type Database = {
           education_level?: Database["public"]["Enums"]["education_level"]
           grade?: string | null
           id?: string
+          parent_id?: string | null
           parent_name?: string | null
           parent_phone?: string | null
           profile_id?: string
@@ -292,6 +418,8 @@ export type Database = {
       }
       teachers: {
         Row: {
+          available_balance: number | null
+          bio: string | null
           certifications: string[] | null
           created_at: string
           description: string | null
@@ -302,14 +430,19 @@ export type Database = {
           id: string
           is_available: boolean
           is_verified: boolean
+          location: string | null
           profile_id: string
           rating: number | null
           subjects: Database["public"]["Enums"]["subject_type"][]
+          teaching_method: string[] | null
+          total_earnings: number | null
           total_reviews: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          available_balance?: number | null
+          bio?: string | null
           certifications?: string[] | null
           created_at?: string
           description?: string | null
@@ -320,14 +453,19 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_verified?: boolean
+          location?: string | null
           profile_id: string
           rating?: number | null
           subjects: Database["public"]["Enums"]["subject_type"][]
+          teaching_method?: string[] | null
+          total_earnings?: number | null
           total_reviews?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          available_balance?: number | null
+          bio?: string | null
           certifications?: string[] | null
           created_at?: string
           description?: string | null
@@ -338,9 +476,12 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_verified?: boolean
+          location?: string | null
           profile_id?: string
           rating?: number | null
           subjects?: Database["public"]["Enums"]["subject_type"][]
+          teaching_method?: string[] | null
+          total_earnings?: number | null
           total_reviews?: number | null
           updated_at?: string
           user_id?: string
@@ -355,6 +496,66 @@ export type Database = {
           },
         ]
       }
+      tutor_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean
+          start_time: string
+          tutor_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_available?: boolean
+          start_time: string
+          tutor_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          tutor_id?: string
+        }
+        Relationships: []
+      }
+      withdraw_requests: {
+        Row: {
+          amount: number
+          bank_account: string | null
+          id: string
+          processed_at: string | null
+          requested_at: string
+          status: Database["public"]["Enums"]["withdraw_status"]
+          tutor_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["withdraw_status"]
+          tutor_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account?: string | null
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          status?: Database["public"]["Enums"]["withdraw_status"]
+          tutor_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -363,8 +564,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "completed"
+        | "cancelled"
+        | "rejected"
       education_level: "sd" | "smp" | "sma" | "kuliah"
       lesson_status: "pending" | "confirmed" | "completed" | "cancelled"
+      payment_status: "pending" | "paid" | "failed" | "refunded"
       subject_type:
         | "matematika"
         | "fisika"
@@ -377,6 +585,7 @@ export type Database = {
         | "ekonomi"
         | "akuntansi"
       user_role: "admin" | "teacher" | "student"
+      withdraw_status: "pending" | "approved" | "rejected" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -504,8 +713,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      booking_status: [
+        "pending",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "rejected",
+      ],
       education_level: ["sd", "smp", "sma", "kuliah"],
       lesson_status: ["pending", "confirmed", "completed", "cancelled"],
+      payment_status: ["pending", "paid", "failed", "refunded"],
       subject_type: [
         "matematika",
         "fisika",
@@ -519,6 +736,7 @@ export const Constants = {
         "akuntansi",
       ],
       user_role: ["admin", "teacher", "student"],
+      withdraw_status: ["pending", "approved", "rejected", "completed"],
     },
   },
 } as const

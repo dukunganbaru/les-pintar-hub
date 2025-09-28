@@ -12,10 +12,15 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalTeachers: 0,
     totalStudents: 0,
-    totalLessons: 0,
+    totalParents: 0,
+    totalBookings: 0,
+    totalRevenue: 0,
     pendingTeachers: 0,
+    pendingWithdraws: 0,
   });
   const [pendingTeachers, setPendingTeachers] = useState<any[]>([]);
+  const [pendingWithdraws, setPendingWithdraws] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -26,20 +31,27 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       // Fetch stats
-      const [usersResult, teachersResult, studentsResult, lessonsResult, pendingResult] = await Promise.all([
+      const [usersResult, teachersResult, studentsResult, parentsResult, bookingsResult, pendingTeachersResult, pendingWithdrawsResult] = await Promise.all([
         supabase.from('profiles').select('id', { count: 'exact' }),
         supabase.from('teachers').select('id', { count: 'exact' }),
         supabase.from('students').select('id', { count: 'exact' }),
-        supabase.from('lessons').select('id', { count: 'exact' }),
+        supabase.from('parents').select('id', { count: 'exact' }),
+        supabase.from('bookings').select('total_amount'),
         supabase.from('teachers').select('id', { count: 'exact' }).eq('is_verified', false),
+        supabase.from('withdraw_requests').select('id', { count: 'exact' }).eq('status', 'pending'),
       ]);
+
+      const totalRevenue = bookingsResult.data?.reduce((sum, booking) => sum + booking.total_amount, 0) || 0;
 
       setStats({
         totalUsers: usersResult.count || 0,
         totalTeachers: teachersResult.count || 0,
         totalStudents: studentsResult.count || 0,
-        totalLessons: lessonsResult.count || 0,
-        pendingTeachers: pendingResult.count || 0,
+        totalParents: parentsResult.count || 0,
+        totalBookings: bookingsResult.data?.length || 0,
+        totalRevenue,
+        pendingTeachers: pendingTeachersResult.count || 0,
+        pendingWithdraws: pendingWithdrawsResult.count || 0,
       });
 
       // Fetch pending teachers
@@ -53,6 +65,28 @@ const AdminDashboard = () => {
         .order('created_at', { ascending: false });
 
       setPendingTeachers(pendingData || []);
+
+      // Fetch pending withdraws
+      const { data: withdrawData } = await supabase
+        .from('withdraw_requests')
+        .select(`
+          *,
+          teachers(
+            profiles(full_name)
+          )
+        `)
+        .eq('status', 'pending')
+        .order('requested_at', { ascending: false });
+
+      setPendingWithdraws(withdrawData || []);
+
+      // Fetch all users
+      const { data: usersData } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      setAllUsers(usersData || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -84,6 +118,33 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleWithdrawApproval = async (withdrawId: string, isApproved: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('withdraw_requests')
+        .update({ 
+          status: isApproved ? 'approved' : 'rejected',
+          processed_at: new Date().toISOString()
+        })
+        .eq('id', withdrawId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Penarikan ${isApproved ? 'disetujui' : 'ditolak'} berhasil`,
+      });
+
+      fetchDashboardData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -101,36 +162,44 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalTeachers} Guru • {stats.totalParents} Orang Tua • {stats.totalStudents} Siswa
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Guru</CardTitle>
-            <GraduationCap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTeachers}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Siswa</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalStudents}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Les</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Booking</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalLessons}</div>
+            <div className="text-2xl font-bold">{stats.totalBookings}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              Rp {stats.totalRevenue.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">{stats.pendingTeachers}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.pendingWithdraws} Penarikan Pending
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -138,10 +207,13 @@ const AdminDashboard = () => {
       <Tabs defaultValue="pending-teachers" className="space-y-4">
         <TabsList>
           <TabsTrigger value="pending-teachers">
-            Persetujuan Guru ({stats.pendingTeachers})
+            Verifikasi Guru ({stats.pendingTeachers})
           </TabsTrigger>
-          <TabsTrigger value="all-teachers">Semua Guru</TabsTrigger>
-          <TabsTrigger value="lessons">Manajemen Les</TabsTrigger>
+          <TabsTrigger value="withdraw-requests">
+            Penarikan Saldo ({stats.pendingWithdraws})
+          </TabsTrigger>
+          <TabsTrigger value="users">Manajemen User</TabsTrigger>
+          <TabsTrigger value="statistics">Statistik</TabsTrigger>
         </TabsList>
 
         <TabsContent value="pending-teachers">
@@ -231,24 +303,131 @@ const AdminDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="all-teachers">
+        <TabsContent value="withdraw-requests">
           <Card>
             <CardHeader>
-              <CardTitle>Semua Guru</CardTitle>
+              <CardTitle>Permintaan Penarikan Saldo</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Fitur manajemen guru akan segera hadir...</p>
+              {pendingWithdraws.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  Tidak ada permintaan penarikan pending
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {pendingWithdraws.map((withdraw) => (
+                    <div key={withdraw.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="font-semibold text-lg">{withdraw.teachers.profiles.full_name}</h3>
+                          <p className="text-muted-foreground">
+                            Jumlah: Rp {withdraw.amount.toLocaleString()}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Bank: {withdraw.bank_account}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Tanggal: {new Date(withdraw.requested_at).toLocaleDateString('id-ID')}
+                          </p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleWithdrawApproval(withdraw.id, true)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Setujui
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleWithdrawApproval(withdraw.id, false)}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Tolak
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="lessons">
+        <TabsContent value="users">
           <Card>
             <CardHeader>
-              <CardTitle>Manajemen Les</CardTitle>
+              <CardTitle>Manajemen User</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">Fitur manajemen les akan segera hadir...</p>
+              <div className="space-y-4">
+                {allUsers.map((user) => (
+                  <div key={user.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="font-semibold">{user.full_name}</h3>
+                        <p className="text-muted-foreground">{user.role}</p>
+                        <p className="text-sm text-muted-foreground">{user.phone}</p>
+                      </div>
+                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                        {user.role}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="statistics">
+          <Card>
+            <CardHeader>
+              <CardTitle>Statistik Platform</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-medium">Ringkasan Pengguna</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Total Guru:</span>
+                      <span className="font-medium">{stats.totalTeachers}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Orang Tua:</span>
+                      <span className="font-medium">{stats.totalParents}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Siswa:</span>
+                      <span className="font-medium">{stats.totalStudents}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h4 className="font-medium">Aktivitas Platform</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Total Booking:</span>
+                      <span className="font-medium">{stats.totalBookings}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Revenue:</span>
+                      <span className="font-medium text-green-600">
+                        Rp {stats.totalRevenue.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Guru Pending:</span>
+                      <span className="font-medium text-yellow-600">{stats.pendingTeachers}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

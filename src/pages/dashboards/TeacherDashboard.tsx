@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Clock, DollarSign, Users, Star, CheckCircle, XCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar, Clock, DollarSign, Users, Star, CheckCircle, XCircle, Plus, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -13,14 +17,30 @@ const TeacherDashboard = () => {
   const { toast } = useToast();
   const [teacherData, setTeacherData] = useState<any>(null);
   const [stats, setStats] = useState({
-    totalLessons: 0,
-    completedLessons: 0,
-    pendingLessons: 0,
+    totalBookings: 0,
+    completedBookings: 0,
+    pendingBookings: 0,
     totalEarnings: 0,
+    availableBalance: 0,
     averageRating: 0,
   });
-  const [lessons, setLessons] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [availability, setAvailability] = useState<any[]>([]);
+  const [withdrawRequests, setWithdrawRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddingAvailability, setIsAddingAvailability] = useState(false);
+  const [isRequestingWithdraw, setIsRequestingWithdraw] = useState(false);
+
+  const [newAvailability, setNewAvailability] = useState({
+    day_of_week: 0,
+    start_time: '',
+    end_time: ''
+  });
+
+  const [withdrawRequest, setWithdrawRequest] = useState({
+    amount: 0,
+    bank_account: ''
+  });
 
   useEffect(() => {
     if (user) {
@@ -42,32 +62,54 @@ const TeacherDashboard = () => {
       setTeacherData(teacher);
 
       if (teacher) {
-        // Fetch lessons
-        const { data: lessonsData } = await supabase
-          .from('lessons')
+        // Fetch bookings
+        const { data: bookingsData } = await supabase
+          .from('bookings')
           .select(`
             *,
             students(
               profiles(full_name)
+            ),
+            parents(
+              profiles(full_name)
             )
           `)
-          .eq('teacher_id', teacher.id)
-          .order('lesson_date', { ascending: false });
+          .eq('tutor_id', teacher.id)
+          .order('booking_date', { ascending: false });
 
-        setLessons(lessonsData || []);
+        setBookings(bookingsData || []);
+
+        // Fetch availability
+        const { data: availabilityData } = await supabase
+          .from('tutor_availability')
+          .select('*')
+          .eq('tutor_id', teacher.id)
+          .order('day_of_week');
+
+        setAvailability(availabilityData || []);
+
+        // Fetch withdraw requests
+        const { data: withdrawData } = await supabase
+          .from('withdraw_requests')
+          .select('*')
+          .eq('tutor_id', teacher.id)
+          .order('requested_at', { ascending: false });
+
+        setWithdrawRequests(withdrawData || []);
 
         // Calculate stats
-        const totalLessons = lessonsData?.length || 0;
-        const completedLessons = lessonsData?.filter(l => l.status === 'completed').length || 0;
-        const pendingLessons = lessonsData?.filter(l => l.status === 'pending').length || 0;
-        const totalEarnings = lessonsData?.filter(l => l.status === 'completed')
-          .reduce((sum, l) => sum + l.total_amount, 0) || 0;
+        const totalBookings = bookingsData?.length || 0;
+        const completedBookings = bookingsData?.filter(b => b.status === 'completed').length || 0;
+        const pendingBookings = bookingsData?.filter(b => b.status === 'pending').length || 0;
+        const totalEarnings = bookingsData?.filter(b => b.status === 'completed')
+          .reduce((sum, b) => sum + b.total_amount, 0) || 0;
 
         setStats({
-          totalLessons,
-          completedLessons,
-          pendingLessons,
+          totalBookings,
+          completedBookings,
+          pendingBookings,
           totalEarnings,
+          availableBalance: teacher.available_balance || 0,
           averageRating: teacher.rating || 0,
         });
       }
@@ -78,20 +120,107 @@ const TeacherDashboard = () => {
     }
   };
 
-  const handleLessonAction = async (lessonId: string, status: string) => {
+  const handleBookingAction = async (bookingId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from('lessons')
+        .from('bookings')
         .update({ status: status as any })
-        .eq('id', lessonId);
+        .eq('id', bookingId);
+
+      if (error) throw error;
+
+      // If completed, update teacher earnings
+      if (status === 'completed') {
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking) {
+          await supabase
+            .from('teachers')
+            .update({ 
+              available_balance: teacherData.available_balance + booking.total_amount,
+              total_earnings: teacherData.total_earnings + booking.total_amount
+            })
+            .eq('id', teacherData.id);
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: `Booking berhasil ${status === 'confirmed' ? 'dikonfirmasi' : status === 'cancelled' ? 'dibatalkan' : status === 'rejected' ? 'ditolak' : 'diselesaikan'}`,
+      });
+
+      fetchTeacherData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddAvailability = async () => {
+    try {
+      const { error } = await supabase
+        .from('tutor_availability')
+        .insert({
+          tutor_id: teacherData.id,
+          ...newAvailability
+        });
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: `Les berhasil ${status === 'confirmed' ? 'dikonfirmasi' : status === 'cancelled' ? 'dibatalkan' : 'diselesaikan'}`,
+        description: "Jadwal ketersediaan berhasil ditambahkan",
       });
 
+      setIsAddingAvailability(false);
+      setNewAvailability({
+        day_of_week: 0,
+        start_time: '',
+        end_time: ''
+      });
+      fetchTeacherData();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWithdrawRequest = async () => {
+    try {
+      if (withdrawRequest.amount > stats.availableBalance) {
+        toast({
+          title: "Error",
+          description: "Jumlah penarikan melebihi saldo tersedia",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('withdraw_requests')
+        .insert({
+          tutor_id: teacherData.id,
+          amount: withdrawRequest.amount,
+          bank_account: withdrawRequest.bank_account
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Permintaan penarikan berhasil dikirim",
+      });
+
+      setIsRequestingWithdraw(false);
+      setWithdrawRequest({
+        amount: 0,
+        bank_account: ''
+      });
       fetchTeacherData();
     } catch (error: any) {
       toast({
@@ -119,8 +248,14 @@ const TeacherDashboard = () => {
       case 'confirmed': return 'bg-blue-100 text-blue-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'rejected': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getDayName = (dayNumber: number) => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[dayNumber];
   };
 
   if (loading) {
@@ -157,24 +292,24 @@ const TeacherDashboard = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-5 gap-6 mb-8">
+      <div className="grid md:grid-cols-6 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Les</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Booking</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalLessons}</div>
+            <div className="text-2xl font-bold">{stats.totalBookings}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Les Selesai</CardTitle>
+            <CardTitle className="text-sm font-medium">Selesai</CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completedLessons}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.completedBookings}</div>
           </CardContent>
         </Card>
 
@@ -184,7 +319,7 @@ const TeacherDashboard = () => {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pendingLessons}</div>
+            <div className="text-2xl font-bold text-yellow-600">{stats.pendingBookings}</div>
           </CardContent>
         </Card>
 
@@ -200,6 +335,16 @@ const TeacherDashboard = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saldo Tersedia</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">Rp {stats.availableBalance.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Rating</CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -209,86 +354,177 @@ const TeacherDashboard = () => {
         </Card>
       </div>
 
-      <Tabs defaultValue="lessons" className="space-y-4">
+      <Tabs defaultValue="bookings" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="lessons">Jadwal Les</TabsTrigger>
+          <TabsTrigger value="bookings">Booking</TabsTrigger>
+          <TabsTrigger value="availability">Jadwal Tersedia</TabsTrigger>
           <TabsTrigger value="profile">Profil Saya</TabsTrigger>
           <TabsTrigger value="earnings">Penghasilan</TabsTrigger>
+          <TabsTrigger value="withdraw">Penarikan</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="lessons">
+        <TabsContent value="bookings">
           <Card>
             <CardHeader>
-              <CardTitle>Jadwal Les</CardTitle>
+              <CardTitle>Booking dari Orang Tua</CardTitle>
             </CardHeader>
             <CardContent>
-              {lessons.length === 0 ? (
+              {bookings.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">
-                  Belum ada jadwal les
+                  Belum ada booking
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {lessons.map((lesson) => (
-                    <div key={lesson.id} className="border rounded-lg p-4">
+                  {bookings.map((booking) => (
+                    <div key={booking.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3 className="font-semibold text-lg">
-                            {lesson.students.profiles.full_name}
+                            {booking.students.profiles.full_name}
                           </h3>
                           <p className="text-muted-foreground">
-                            {lesson.subject} • {lesson.duration_hours} jam
+                            {booking.subject} • {booking.duration_hours} jam
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(lesson.lesson_date)}
+                            {formatDate(booking.booking_date)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Orang Tua: {booking.parents.profiles.full_name}
                           </p>
                         </div>
-                        <Badge className={getStatusColor(lesson.status)}>
-                          {lesson.status}
+                        <Badge className={getStatusColor(booking.status)}>
+                          {booking.status}
                         </Badge>
                       </div>
 
                       <div className="flex justify-between items-center">
                         <div>
                           <p className="font-medium text-green-600">
-                            Rp {lesson.total_amount.toLocaleString()}
+                            Rp {booking.total_amount.toLocaleString()}
                           </p>
                         </div>
 
-                        {lesson.status === 'pending' && (
+                        {booking.status === 'pending' && (
                           <div className="space-x-2">
                             <Button
                               size="sm"
-                              onClick={() => handleLessonAction(lesson.id, 'confirmed')}
+                              onClick={() => handleBookingAction(booking.id, 'confirmed')}
                             >
-                              Konfirmasi
+                              Terima
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => handleLessonAction(lesson.id, 'cancelled')}
+                              onClick={() => handleBookingAction(booking.id, 'rejected')}
                             >
-                              Batalkan
+                              Tolak
                             </Button>
                           </div>
                         )}
 
-                        {lesson.status === 'confirmed' && (
+                        {booking.status === 'confirmed' && (
                           <Button
                             size="sm"
-                            onClick={() => handleLessonAction(lesson.id, 'completed')}
+                            onClick={() => handleBookingAction(booking.id, 'completed')}
                           >
                             Selesai
                           </Button>
                         )}
                       </div>
 
-                      {lesson.notes && (
+                      {booking.notes && (
                         <div className="mt-4 p-3 bg-muted rounded">
                           <p className="text-sm">
-                            <strong>Catatan:</strong> {lesson.notes}
+                            <strong>Catatan:</strong> {booking.notes}
                           </p>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="availability">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Jadwal Ketersediaan</CardTitle>
+              <Dialog open={isAddingAvailability} onOpenChange={setIsAddingAvailability}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Jadwal
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Tambah Jadwal Ketersediaan</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="day_of_week">Hari</Label>
+                      <Select value={newAvailability.day_of_week.toString()} onValueChange={(value) => setNewAvailability({...newAvailability, day_of_week: parseInt(value)})}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Minggu</SelectItem>
+                          <SelectItem value="1">Senin</SelectItem>
+                          <SelectItem value="2">Selasa</SelectItem>
+                          <SelectItem value="3">Rabu</SelectItem>
+                          <SelectItem value="4">Kamis</SelectItem>
+                          <SelectItem value="5">Jumat</SelectItem>
+                          <SelectItem value="6">Sabtu</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="start_time">Jam Mulai</Label>
+                      <Input
+                        id="start_time"
+                        type="time"
+                        value={newAvailability.start_time}
+                        onChange={(e) => setNewAvailability({...newAvailability, start_time: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="end_time">Jam Selesai</Label>
+                      <Input
+                        id="end_time"
+                        type="time"
+                        value={newAvailability.end_time}
+                        onChange={(e) => setNewAvailability({...newAvailability, end_time: e.target.value})}
+                      />
+                    </div>
+                    <Button onClick={handleAddAvailability} className="w-full">
+                      Tambah Jadwal
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              {availability.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">
+                  Belum ada jadwal ketersediaan
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {availability.map((avail) => (
+                    <div key={avail.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-semibold">{getDayName(avail.day_of_week)}</h3>
+                          <p className="text-muted-foreground">
+                            {avail.start_time} - {avail.end_time}
+                          </p>
+                        </div>
+                        <Badge variant={avail.is_available ? "default" : "secondary"}>
+                          {avail.is_available ? "Tersedia" : "Tidak Tersedia"}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -356,24 +592,122 @@ const TeacherDashboard = () => {
               <CardTitle>Riwayat Penghasilan</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-6 p-4 bg-muted rounded-lg">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Penghasilan</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      Rp {stats.totalEarnings.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Saldo Tersedia</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      Rp {stats.availableBalance.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="space-y-4">
-                {lessons.filter(l => l.status === 'completed').map((lesson) => (
-                  <div key={lesson.id} className="flex justify-between items-center p-3 border rounded">
+                {bookings.filter(b => b.status === 'completed').map((booking) => (
+                  <div key={booking.id} className="flex justify-between items-center p-3 border rounded">
                     <div>
-                      <p className="font-medium">{lesson.students.profiles.full_name}</p>
+                      <p className="font-medium">{booking.students.profiles.full_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(lesson.lesson_date)} • {lesson.subject}
+                        {formatDate(booking.booking_date)} • {booking.subject}
                       </p>
                     </div>
                     <p className="font-bold text-green-600">
-                      +Rp {lesson.total_amount.toLocaleString()}
+                      +Rp {booking.total_amount.toLocaleString()}
                     </p>
                   </div>
                 ))}
 
-                {lessons.filter(l => l.status === 'completed').length === 0 && (
+                {bookings.filter(b => b.status === 'completed').length === 0 && (
                   <p className="text-muted-foreground text-center py-4">
                     Belum ada penghasilan
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="withdraw">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Penarikan Saldo</CardTitle>
+              <Dialog open={isRequestingWithdraw} onOpenChange={setIsRequestingWithdraw}>
+                <DialogTrigger asChild>
+                  <Button disabled={stats.availableBalance === 0}>
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Tarik Saldo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Permintaan Penarikan Saldo</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">Saldo Tersedia</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        Rp {stats.availableBalance.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="amount">Jumlah Penarikan</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        max={stats.availableBalance}
+                        value={withdrawRequest.amount}
+                        onChange={(e) => setWithdrawRequest({...withdrawRequest, amount: parseInt(e.target.value)})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="bank_account">Rekening Bank</Label>
+                      <Input
+                        id="bank_account"
+                        placeholder="Nomor rekening dan nama bank"
+                        value={withdrawRequest.bank_account}
+                        onChange={(e) => setWithdrawRequest({...withdrawRequest, bank_account: e.target.value})}
+                      />
+                    </div>
+                    <Button onClick={handleWithdrawRequest} className="w-full">
+                      Kirim Permintaan
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {withdrawRequests.map((request) => (
+                  <div key={request.id} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">
+                          Rp {request.amount.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {request.bank_account}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(request.requested_at)}
+                        </p>
+                      </div>
+                      <Badge className={getStatusColor(request.status)}>
+                        {request.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+
+                {withdrawRequests.length === 0 && (
+                  <p className="text-muted-foreground text-center py-4">
+                    Belum ada permintaan penarikan
                   </p>
                 )}
               </div>
