@@ -1,47 +1,96 @@
 import { useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, User, LogOut } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/contexts/AuthContext"
 import logo from "@/assets/logo.png"
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const { user, profile, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/')
+  }
+
+  const getDashboardRoute = () => {
+    if (!profile) return '/auth'
+    
+    switch (profile.role) {
+      case 'teacher':
+        return '/dashboard/guru'
+      case 'parent':
+        return '/dashboard/orang-tua'
+      case 'student':
+        return '/dashboard/siswa'
+      case 'admin':
+        return '/dashboard/admin'
+      default:
+        return '/auth'
+    }
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <img src={logo} alt="FunTeacher Private" className="h-10 w-10" />
             <span className="font-bold text-xl text-primary">FunTeacher Private</span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            <a href="#beranda" className="text-foreground hover:text-primary transition-smooth font-medium">
+            <Link to="/" className="text-foreground hover:text-primary transition-smooth font-medium">
               Beranda
-            </a>
-            <a href="#layanan" className="text-foreground hover:text-primary transition-smooth font-medium">
+            </Link>
+            <Link to="/biaya-les" className="text-foreground hover:text-primary transition-smooth font-medium">
               Biaya Les
-            </a>
-            <a href="#blog" className="text-foreground hover:text-primary transition-smooth font-medium">
+            </Link>
+            <Link to="/blog" className="text-foreground hover:text-primary transition-smooth font-medium">
               Blog
-            </a>
-            <a href="#referral" className="text-foreground hover:text-primary transition-smooth font-medium">
+            </Link>
+            <Link to="/referral" className="text-foreground hover:text-primary transition-smooth font-medium">
               Referral
-            </a>
-            <a href="#cari-pengajar" className="text-foreground hover:text-primary transition-smooth font-medium">
+            </Link>
+            <Link to="/cari-pengajar" className="text-foreground hover:text-primary transition-smooth font-medium">
               Cari Pengajar
-            </a>
-            <a href="#jadi-pengajar" className="text-foreground hover:text-primary transition-smooth font-medium">
+            </Link>
+            <Link to="/jadi-pengajar" className="text-foreground hover:text-primary transition-smooth font-medium">
               Jadi Pengajar
-            </a>
+            </Link>
           </div>
 
           {/* Desktop CTA Buttons */}
           <div className="hidden md:flex items-center space-x-3">
-            <Button variant="outline">Masuk</Button>
-            <Button variant="primary">Daftar</Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center space-x-2">
+                    <User className="h-4 w-4" />
+                    <span>{profile?.full_name || user.email}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate(getDashboardRoute())}>
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Keluar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => navigate('/auth')}>Masuk</Button>
+                <Button variant="default" onClick={() => navigate('/auth')}>Daftar</Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -60,51 +109,96 @@ const Navbar = () => {
         {isOpen && (
           <div className="md:hidden bg-white border-t border-border animate-slide-up">
             <div className="px-2 pt-2 pb-3 space-y-1">
-              <a
-                href="#beranda"
+              <Link
+                to="/"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Beranda
-              </a>
-              <a
-                href="#layanan"
+              </Link>
+              <Link
+                to="/biaya-les"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Biaya Les
-              </a>
-              <a
-                href="#blog"
+              </Link>
+              <Link
+                to="/blog"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Blog
-              </a>
-              <a
-                href="#referral"
+              </Link>
+              <Link
+                to="/referral"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Referral
-              </a>
-              <a
-                href="#cari-pengajar"
+              </Link>
+              <Link
+                to="/cari-pengajar"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Cari Pengajar
-              </a>
-              <a
-                href="#jadi-pengajar"
+              </Link>
+              <Link
+                to="/jadi-pengajar"
                 className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
                 onClick={() => setIsOpen(false)}
               >
                 Jadi Pengajar
-              </a>
+              </Link>
               <div className="px-3 py-2 space-y-2">
-                <Button variant="outline" className="w-full">Masuk</Button>
-                <Button variant="primary" className="w-full">Daftar</Button>
+                {user ? (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        navigate(getDashboardRoute())
+                        setIsOpen(false)
+                      }}
+                    >
+                      Dashboard
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      className="w-full"
+                      onClick={() => {
+                        handleSignOut()
+                        setIsOpen(false)
+                      }}
+                    >
+                      Keluar
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        navigate('/auth')
+                        setIsOpen(false)
+                      }}
+                    >
+                      Masuk
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      className="w-full"
+                      onClick={() => {
+                        navigate('/auth')
+                        setIsOpen(false)
+                      }}
+                    >
+                      Daftar
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
