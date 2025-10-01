@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -264,7 +265,7 @@ const TeacherDashboard = () => {
 
   if (!teacherData) {
     return (
-      <div className="container mx-auto px-6 py-8">
+      <DashboardLayout title="Dashboard Guru">
         <Card>
           <CardHeader>
             <CardTitle>Profil Guru Belum Lengkap</CardTitle>
@@ -278,14 +279,14 @@ const TeacherDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <DashboardLayout title="Dashboard Guru" subtitle="Kelola les dan penghasilan Anda">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Dashboard Guru</h1>
+        <div></div>
         <Badge variant={teacherData.is_verified ? "default" : "secondary"}>
           {teacherData.is_verified ? "Terverifikasi" : "Menunggu Verifikasi"}
         </Badge>
@@ -715,7 +716,7 @@ const TeacherDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardLayout>
   );
 };
 

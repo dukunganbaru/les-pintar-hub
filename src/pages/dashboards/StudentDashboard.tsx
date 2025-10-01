@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -207,7 +208,7 @@ const StudentDashboard = () => {
 
   if (!studentData) {
     return (
-      <div className="container mx-auto px-6 py-8">
+      <DashboardLayout title="Dashboard Siswa">
         <Card>
           <CardHeader>
             <CardTitle>Profil Siswa Belum Lengkap</CardTitle>
@@ -221,14 +222,14 @@ const StudentDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <DashboardLayout title="Dashboard Siswa" subtitle="Kelola jadwal les dan progress belajar Anda">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Dashboard Siswa</h1>
+        <div></div>
         
         <Dialog>
           <DialogTrigger asChild>
@@ -462,7 +463,7 @@ const StudentDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardLayout>
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DashboardLayout from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -261,7 +262,7 @@ const ParentDashboard = () => {
 
   if (!parentData) {
     return (
-      <div className="container mx-auto px-6 py-8">
+      <DashboardLayout title="Dashboard Orang Tua">
         <Card>
           <CardHeader>
             <CardTitle>Profil Orang Tua Belum Lengkap</CardTitle>
@@ -275,14 +276,12 @@ const ParentDashboard = () => {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
-      <h1 className="text-3xl font-bold mb-8">Dashboard Orang Tua</h1>
-
+    <DashboardLayout title="Dashboard Orang Tua" subtitle="Kelola data anak dan booking les">
       {/* Stats Cards */}
       <div className="grid md:grid-cols-4 gap-6 mb-8">
         <Card>
@@ -712,7 +711,7 @@ const ParentDashboard = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </DashboardLayout>
   );
 };
 
