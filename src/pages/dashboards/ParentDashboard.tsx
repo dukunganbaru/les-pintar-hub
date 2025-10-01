@@ -61,60 +61,81 @@ const ParentDashboard = () => {
 
     try {
       // Fetch parent profile
-      const { data: parent } = await supabase
+      const { data: parent, error: parentError } = await supabase
         .from('parents')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
+
+      if (parentError) {
+        console.error('Error fetching parent:', parentError);
+      }
 
       setParentData(parent);
 
       if (parent) {
-        // Fetch children
-        const { data: childrenData } = await supabase
+        // Fetch children with profiles
+        const { data: childrenData, error: childrenError } = await supabase
           .from('students')
-          .select('*')
+          .select(`
+            *,
+            profiles(full_name, avatar_url)
+          `)
           .eq('parent_id', parent.id);
+
+        if (childrenError) {
+          console.error('Error fetching children:', childrenError);
+        }
 
         setChildren(childrenData || []);
 
         // Fetch bookings
-        const { data: bookingsData } = await supabase
+        const { data: bookingsData, error: bookingsError } = await supabase
           .from('bookings')
           .select(`
             *,
             teachers(
-              profiles(full_name),
+              id,
               subjects,
               hourly_rate,
-              rating
-            ),
-            students(profiles(full_name))
+              rating,
+              profiles(full_name)
+            )
           `)
           .eq('parent_id', parent.id)
           .order('booking_date', { ascending: false });
 
+        if (bookingsError) {
+          console.error('Error fetching bookings:', bookingsError);
+        }
+
         setBookings(bookingsData || []);
 
         // Fetch payments
-        const { data: paymentsData } = await supabase
+        const { data: paymentsData, error: paymentsError } = await supabase
           .from('payments')
           .select(`
             *,
             bookings(
               subject,
               booking_date,
-              teachers(profiles(full_name))
+              teachers(
+                profiles(full_name)
+              )
             )
           `)
           .eq('parent_id', parent.id)
           .order('created_at', { ascending: false });
 
+        if (paymentsError) {
+          console.error('Error fetching payments:', paymentsError);
+        }
+
         setPayments(paymentsData || []);
       }
 
       // Fetch available tutors
-      const { data: tutorsData } = await supabase
+      const { data: tutorsData, error: tutorsError } = await supabase
         .from('teachers')
         .select(`
           *,
@@ -123,27 +144,61 @@ const ParentDashboard = () => {
         .eq('is_verified', true)
         .eq('is_available', true);
 
+      if (tutorsError) {
+        console.error('Error fetching tutors:', tutorsError);
+      }
+
       setTutors(tutorsData || []);
     } catch (error) {
       console.error('Error fetching parent data:', error);
+      toast({
+        title: "Error",
+        description: "Gagal memuat data. Silakan refresh halaman.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleAddChild = async () => {
-    if (!parentData) return;
+    if (!parentData || !user) return;
 
     try {
+      // First, get or create the profile for the child
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      let profileId = existingProfile?.id;
+
+      if (!profileId) {
+        const { data: newProfile, error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            full_name: newChild.name,
+            role: 'student'
+          })
+          .select()
+          .single();
+
+        if (profileError) throw profileError;
+        profileId = newProfile.id;
+      }
+
+      // Now insert the student record
       const { error } = await supabase
         .from('students')
         .insert({
-          user_id: user?.id,
+          user_id: user.id,
+          profile_id: profileId,
           education_level: newChild.education_level as any,
           school_name: newChild.school_name,
           grade: newChild.grade,
-          parent_id: parentData.id,
-          profile_id: user?.id // assuming profile_id should be user_id
+          parent_id: parentData.id
         });
 
       if (error) throw error;
@@ -163,16 +218,26 @@ const ParentDashboard = () => {
       });
       fetchParentData();
     } catch (error: any) {
+      console.error('Error adding child:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Gagal menambahkan data anak",
         variant: "destructive",
       });
     }
   };
 
   const handleBookTutor = async () => {
-    if (!selectedTutor || !newBooking.student_id) return;
+    if (!selectedTutor || !newBooking.student_id || !parentData) return;
+
+    if (!newBooking.booking_date || !newBooking.subject) {
+      toast({
+        title: "Error",
+        description: "Mohon lengkapi semua field",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const totalAmount = selectedTutor.hourly_rate * newBooking.duration_hours;
@@ -180,11 +245,16 @@ const ParentDashboard = () => {
       const { data: booking, error } = await supabase
         .from('bookings')
         .insert({
-          ...newBooking,
+          student_id: newBooking.student_id,
           tutor_id: selectedTutor.id,
           parent_id: parentData.id,
+          subject: newBooking.subject,
+          booking_date: newBooking.booking_date,
+          duration_hours: newBooking.duration_hours,
           hourly_rate: selectedTutor.hourly_rate,
-          total_amount: totalAmount
+          total_amount: totalAmount,
+          notes: newBooking.notes || null,
+          status: 'pending'
         })
         .select()
         .single();
@@ -192,7 +262,7 @@ const ParentDashboard = () => {
       if (error) throw error;
 
       // Create payment record
-      await supabase
+      const { error: paymentError } = await supabase
         .from('payments')
         .insert({
           booking_id: booking.id,
@@ -201,9 +271,13 @@ const ParentDashboard = () => {
           status: 'pending'
         });
 
+      if (paymentError) {
+        console.error('Payment creation error:', paymentError);
+      }
+
       toast({
         title: "Berhasil",
-        description: "Booking berhasil dibuat",
+        description: "Booking berhasil dibuat. Menunggu konfirmasi guru.",
       });
 
       setIsBookingTutor(false);
@@ -218,9 +292,10 @@ const ParentDashboard = () => {
       });
       fetchParentData();
     } catch (error: any) {
+      console.error('Booking error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Gagal membuat booking",
         variant: "destructive",
       });
     }
@@ -414,14 +489,23 @@ const ParentDashboard = () => {
                 <div className="space-y-4">
                   {children.map((child) => (
                     <div key={child.id} className="border rounded-lg p-4">
-                      <h3 className="font-semibold text-lg">{child.profiles?.full_name || child.name}</h3>
-                      <p className="text-muted-foreground">
-                        {child.education_level?.toUpperCase()} • Kelas {child.grade}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{child.school_name}</p>
-                      {child.notes && (
-                        <p className="text-sm mt-2">{child.notes}</p>
-                      )}
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {child.profiles?.full_name || 'Nama Siswa'}
+                          </h3>
+                          <p className="text-muted-foreground">
+                            {child.education_level?.toUpperCase() || 'N/A'} 
+                            {child.grade && ` • Kelas ${child.grade}`}
+                          </p>
+                          {child.school_name && (
+                            <p className="text-sm text-muted-foreground">{child.school_name}</p>
+                          )}
+                        </div>
+                        <Badge variant="secondary">
+                          {child.education_level?.toUpperCase() || 'N/A'}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -455,7 +539,7 @@ const ParentDashboard = () => {
                             <SelectContent>
                               {children.map((child) => (
                                 <SelectItem key={child.id} value={child.id}>
-                                  {child.profiles?.full_name || child.name}
+                                  {child.profiles?.full_name || 'Siswa'}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -483,6 +567,8 @@ const ParentDashboard = () => {
                             type="datetime-local"
                             value={newBooking.booking_date}
                             onChange={(e) => setNewBooking({...newBooking, booking_date: e.target.value})}
+                            min={new Date().toISOString().slice(0, 16)}
+                            required
                           />
                         </div>
                         <div>
@@ -503,13 +589,25 @@ const ParentDashboard = () => {
                             onChange={(e) => setNewBooking({...newBooking, notes: e.target.value})}
                           />
                         </div>
-                        <div className="p-3 bg-muted rounded">
-                          <p className="font-medium">
-                            Total: Rp {(selectedTutor.hourly_rate * newBooking.duration_hours).toLocaleString()}
+                        <div className="p-4 bg-muted rounded">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Total Biaya:</span>
+                            <span className="text-xl font-bold text-primary">
+                              Rp {(selectedTutor.hourly_rate * newBooking.duration_hours).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {newBooking.duration_hours} jam x Rp {selectedTutor.hourly_rate.toLocaleString()}/jam
                           </p>
                         </div>
-                        <Button onClick={handleBookTutor} className="w-full">
-                          Booking Sekarang
+                        <Button 
+                          onClick={handleBookTutor} 
+                          className="w-full"
+                          disabled={!newBooking.student_id || !newBooking.subject || !newBooking.booking_date}
+                        >
+                          {!newBooking.student_id || !newBooking.subject || !newBooking.booking_date 
+                            ? 'Lengkapi Data Booking' 
+                            : 'Buat Booking'}
                         </Button>
                       </div>
                     )}
@@ -626,9 +724,9 @@ const ParentDashboard = () => {
                   {bookings.map((booking) => (
                     <div key={booking.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-4">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-semibold text-lg">
-                            {booking.teachers.profiles.full_name}
+                            {booking.teachers?.profiles?.full_name || 'Guru'}
                           </h3>
                           <p className="text-muted-foreground">
                             {booking.subject} • {booking.duration_hours} jam
@@ -636,21 +734,35 @@ const ParentDashboard = () => {
                           <p className="text-sm text-muted-foreground">
                             {formatDate(booking.booking_date)}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Siswa: {booking.students.profiles.full_name}
-                          </p>
                         </div>
                         <Badge className={getStatusColor(booking.status)}>
-                          {booking.status}
+                          {booking.status === 'pending' && 'Menunggu'}
+                          {booking.status === 'confirmed' && 'Dikonfirmasi'}
+                          {booking.status === 'completed' && 'Selesai'}
+                          {booking.status === 'cancelled' && 'Dibatalkan'}
+                          {booking.status === 'rejected' && 'Ditolak'}
                         </Badge>
                       </div>
 
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center pt-3 border-t">
                         <div>
-                          <p className="font-medium text-green-600">
+                          <p className="text-sm text-muted-foreground">Total Biaya</p>
+                          <p className="text-xl font-bold text-green-600">
                             Rp {booking.total_amount.toLocaleString()}
                           </p>
                         </div>
+                        
+                        {booking.status === 'pending' && (
+                          <Button variant="outline" size="sm">
+                            Batalkan
+                          </Button>
+                        )}
+                        
+                        {booking.status === 'confirmed' && (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                            Menunggu Les
+                          </Badge>
+                        )}
                       </div>
 
                       {booking.notes && (
