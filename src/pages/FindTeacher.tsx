@@ -123,11 +123,16 @@ const FindTeacher = () => {
   };
 
   const filteredTeachers = teachers.filter(teacher => {
-    const matchesSearch = teacher.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         teacher.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const fullName = teacher.profiles?.full_name || '';
+    const desc = teacher.description || '';
+    const teacherSubjects = teacher.subjects || [];
+    const teacherLevels = teacher.education_levels || [];
     
-    const matchesSubject = selectedSubject === '' || teacher.subjects.includes(selectedSubject);
-    const matchesLevel = selectedLevel === '' || teacher.education_levels.includes(selectedLevel);
+    const matchesSearch = fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         desc.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesSubject = selectedSubject === '' || teacherSubjects.includes(selectedSubject);
+    const matchesLevel = selectedLevel === '' || teacherLevels.includes(selectedLevel);
     
     return matchesSearch && matchesSubject && matchesLevel;
   });
