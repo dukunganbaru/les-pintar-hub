@@ -561,7 +561,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_test_profile: {
+        Args: {
+          p_full_name: string
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       booking_status:
