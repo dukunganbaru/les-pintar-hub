@@ -67,11 +67,11 @@ const Referral = () => {
 
   const shareReferral = () => {
     const shareUrl = `${window.location.origin}/auth?ref=${referralCode}`;
-    const shareText = `Bergabunglah dengan FunTeacher Private menggunakan kode referral saya: ${referralCode}. Dapatkan diskon untuk les privat terbaik! ${shareUrl}`;
+    const shareText = `Bergabunglah dengan Gurupeia.id menggunakan kode referral saya: ${referralCode}. Dapatkan diskon untuk les privat terbaik! ${shareUrl}`;
     
     if (navigator.share) {
       navigator.share({
-        title: 'FunTeacher Private - Referral',
+        title: "Gurupeia.id - Referral",
         text: shareText,
         url: shareUrl,
       });

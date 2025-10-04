@@ -1,6 +1,6 @@
 # Kredensial Login untuk Testing
 
-## 🔑 Akun Demo FunTeacher Private
+## 🔑 Akun Demo Gurupeia.id
 
 Gunakan kredensial berikut untuk testing semua fitur aplikasi:
 
@@ -91,7 +91,7 @@ Gunakan kredensial berikut untuk testing semua fitur aplikasi:
 -- Untuk Admin
 SELECT create_test_profile(
   'USER_ID_DARI_AUTH', 
-  'Admin FunTeacher', 
+  'Admin Gurupeia', 
   'admin'::user_role
 );
 

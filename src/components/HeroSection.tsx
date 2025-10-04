@@ -49,7 +49,7 @@ const HeroSection = () => {
             <div className="absolute inset-0 gradient-primary rounded-3xl blur-3xl opacity-20"></div>
             <img
               src={heroImage}
-              alt="Students learning with FunTeacher Private"
+              alt="Students learning with Gurupeia.id"
               className="relative rounded-3xl shadow-hero w-full h-auto object-cover"
             />
           </div>

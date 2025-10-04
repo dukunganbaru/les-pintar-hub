@@ -72,8 +72,8 @@ const Footer = () => {
             {/* Company Info */}
             <div className="lg:col-span-2">
               <div className="flex items-center space-x-2 mb-6">
-                <img src={logo} alt="FunTeacher Private" className="h-10 w-10" />
-                <span className="font-bold text-xl">FunTeacher Private</span>
+                <img src={logo} alt="Gurupeia.id" className="h-10 w-10" />
+                <span className="font-bold text-xl">Gurupeia.id</span>
               </div>
               <p className="text-white/80 mb-6 leading-relaxed">
                 Platform les privat terpercaya dengan pengajar berkualitas untuk semua jenjang pendidikan. 
@@ -177,7 +177,7 @@ const Footer = () => {
 
               {/* Copyright */}
               <div className="text-white/60 text-center md:text-right">
-                <p>&copy; 2024 FunTeacher Private. Hak Cipta Dilindungi.</p>
+                <p>&copy; 2024 Gurupeia.id. Hak Cipta Dilindungi.</p>
                 <p className="text-sm mt-1">Dibuat dengan ❤️ untuk pendidikan Indonesia</p>
               </div>
             </div>
