@@ -7,6 +7,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+
+// Validation schemas
+const loginSchema = z.object({
+  email: z.string().trim().email('Email tidak valid').max(255),
+  password: z.string().min(6, 'Password minimal 6 karakter').max(100),
+});
+
+const signupSchema = loginSchema.extend({
+  fullName: z.string().trim().min(3, 'Nama minimal 3 karakter').max(100),
+  role: z.enum(['student', 'teacher', 'parent', 'admin']),
+});
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -32,39 +44,82 @@ const Auth = () => {
 
     try {
       if (isLogin) {
+        // Validate login input
+        const validation = loginSchema.safeParse({ email, password });
+        if (!validation.success) {
+          toast({
+            title: "Validasi Gagal",
+            description: validation.error.errors[0].message,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signIn(email, password);
         if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Email atau password salah';
+          } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Silakan konfirmasi email Anda terlebih dahulu';
+          }
+          
           toast({
-            title: "Error",
-            description: error.message,
+            title: "Login Gagal",
+            description: errorMessage,
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Success",
-            description: "Berhasil masuk!",
+            title: "Berhasil!",
+            description: "Selamat datang kembali!",
           });
           navigate('/');
         }
       } else {
+        // Validate signup input
+        const validation = signupSchema.safeParse({ email, password, fullName, role });
+        if (!validation.success) {
+          toast({
+            title: "Validasi Gagal",
+            description: validation.error.errors[0].message,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         const { error } = await signUp(email, password, fullName, role);
         if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('already registered')) {
+            errorMessage = 'Email sudah terdaftar. Silakan login.';
+          } else if (error.message.includes('password')) {
+            errorMessage = 'Password terlalu lemah. Gunakan minimal 6 karakter.';
+          }
+          
           toast({
-            title: "Error",
-            description: error.message,
+            title: "Pendaftaran Gagal",
+            description: errorMessage,
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Success",
-            description: "Akun berhasil dibuat! Silakan cek email untuk verifikasi.",
+            title: "Berhasil!",
+            description: "Akun berhasil dibuat! Anda akan dialihkan ke halaman login.",
           });
+          // Auto switch to login after successful signup
+          setTimeout(() => {
+            setIsLogin(true);
+            setPassword('');
+          }, 2000);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Terjadi kesalahan. Silakan coba lagi.",
+        description: error?.message || "Terjadi kesalahan. Silakan coba lagi.",
         variant: "destructive",
       });
     } finally {
@@ -122,12 +177,13 @@ const Auth = () => {
                 <Label htmlFor="role">Daftar Sebagai</Label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Pilih role" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="student">Siswa</SelectItem>
                     <SelectItem value="teacher">Guru</SelectItem>
                     <SelectItem value="parent">Orang Tua</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
