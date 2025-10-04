@@ -181,10 +181,9 @@ const FindTeacher = () => {
               
               <Select value={selectedSubject} onValueChange={setSelectedSubject}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih mata pelajaran" />
+                  <SelectValue placeholder="Semua mata pelajaran" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua mata pelajaran</SelectItem>
                   {subjects.map((subject) => (
                     <SelectItem key={subject.value} value={subject.value}>
                       {subject.label}
@@ -195,10 +194,9 @@ const FindTeacher = () => {
               
               <Select value={selectedLevel} onValueChange={setSelectedLevel}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Pilih tingkat" />
+                  <SelectValue placeholder="Semua tingkat" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua tingkat</SelectItem>
                   {levels.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
                       {level.label}
