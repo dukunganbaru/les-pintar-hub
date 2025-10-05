@@ -591,7 +591,7 @@ export type Database = {
         | "geografi"
         | "ekonomi"
         | "akuntansi"
-      user_role: "admin" | "teacher" | "student"
+      user_role: "admin" | "teacher" | "student" | "parent"
       withdraw_status: "pending" | "approved" | "rejected" | "completed"
     }
     CompositeTypes: {
@@ -742,7 +742,7 @@ export const Constants = {
         "ekonomi",
         "akuntansi",
       ],
-      user_role: ["admin", "teacher", "student"],
+      user_role: ["admin", "teacher", "student", "parent"],
       withdraw_status: ["pending", "approved", "rejected", "completed"],
     },
   },
