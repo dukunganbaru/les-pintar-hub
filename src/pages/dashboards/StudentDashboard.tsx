@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Clock, BookOpen, Star, Plus, User } from 'lucide-react';
+import { Calendar, Clock, BookOpen, Star, Plus, User, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -386,9 +386,10 @@ const StudentDashboard = () => {
       </div>
 
       <Tabs defaultValue="lessons" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="lessons">Riwayat Les</TabsTrigger>
-          <TabsTrigger value="teachers">Guru Favorit</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="lessons">Jadwal Les</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsTrigger value="profile">Profil</TabsTrigger>
         </TabsList>
 
         <TabsContent value="lessons">
@@ -450,15 +451,160 @@ const StudentDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="teachers">
+        <TabsContent value="progress">
           <Card>
             <CardHeader>
-              <CardTitle>Guru Favorit</CardTitle>
+              <CardTitle>Progress Belajar</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground text-center py-4">
-                Fitur guru favorit akan segera hadir...
-              </p>
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Statistik Les</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between p-3 bg-muted rounded">
+                        <span className="text-muted-foreground">Total Les:</span>
+                        <span className="font-bold">{stats.totalLessons}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-green-50 rounded">
+                        <span className="text-muted-foreground">Les Selesai:</span>
+                        <span className="font-bold text-green-600">{stats.completedLessons}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-blue-50 rounded">
+                        <span className="text-muted-foreground">Les Mendatang:</span>
+                        <span className="font-bold text-blue-600">{stats.upcomingLessons}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-muted rounded border-t-2 border-primary">
+                        <span className="font-medium">Total Biaya:</span>
+                        <span className="font-bold text-primary">Rp {stats.totalSpent.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Mata Pelajaran</h4>
+                    <div className="space-y-2">
+                      {lessons.length > 0 ? (
+                        Array.from(new Set(lessons.map(l => l.subject))).map(subject => {
+                          const count = lessons.filter(l => l.subject === subject).length;
+                          const completed = lessons.filter(l => l.subject === subject && l.status === 'completed').length;
+                          return (
+                            <div key={subject} className="p-3 bg-muted rounded">
+                              <div className="flex justify-between mb-1">
+                                <span className="capitalize font-medium">{subject}:</span>
+                                <span className="font-bold">{count} les</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {completed} selesai • {count - completed} berlangsung
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-muted-foreground text-sm text-center py-4">
+                          Belum ada data mata pelajaran
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {lessons.filter(l => l.status === 'completed').length > 0 && (
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium mb-4">Riwayat Les Terbaru</h4>
+                    <div className="space-y-2">
+                      {lessons
+                        .filter(l => l.status === 'completed')
+                        .slice(0, 5)
+                        .map(lesson => (
+                          <div key={lesson.id} className="flex justify-between items-center p-3 bg-muted rounded hover:shadow-sm transition-shadow">
+                            <div>
+                              <p className="font-medium capitalize">{lesson.subject}</p>
+                              <p className="text-sm text-muted-foreground">{lesson.teachers.profiles.full_name}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">Rp {lesson.total_amount.toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(lesson.lesson_date).toLocaleDateString('id-ID')}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="profile">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profil Siswa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted rounded">
+                      <Label className="text-sm text-muted-foreground">Tingkat Pendidikan</Label>
+                      <p className="font-medium text-lg uppercase mt-1">{studentData.education_level}</p>
+                    </div>
+                    
+                    {studentData.school_name && (
+                      <div className="p-4 bg-muted rounded">
+                        <Label className="text-sm text-muted-foreground">Sekolah</Label>
+                        <p className="font-medium mt-1">{studentData.school_name}</p>
+                      </div>
+                    )}
+                    
+                    {studentData.grade && (
+                      <div className="p-4 bg-muted rounded">
+                        <Label className="text-sm text-muted-foreground">Kelas</Label>
+                        <p className="font-medium mt-1">{studentData.grade}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    {studentData.parent_name && (
+                      <div className="p-4 bg-muted rounded">
+                        <Label className="text-sm text-muted-foreground">Nama Orang Tua</Label>
+                        <p className="font-medium mt-1">{studentData.parent_name}</p>
+                      </div>
+                    )}
+                    
+                    {studentData.parent_phone && (
+                      <div className="p-4 bg-muted rounded">
+                        <Label className="text-sm text-muted-foreground">No. HP Orang Tua</Label>
+                        <p className="font-medium mt-1">{studentData.parent_phone}</p>
+                      </div>
+                    )}
+
+                    <div className="p-4 bg-primary/5 rounded border border-primary/20">
+                      <Label className="text-sm text-muted-foreground">Status Akun</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="default">Aktif</Badge>
+                        <span className="text-sm text-muted-foreground">Sejak {new Date(studentData.created_at).toLocaleDateString('id-ID')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h4 className="font-medium mb-3">Aksi Profil</h4>
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1">
+                      <User className="h-4 w-4 mr-2" />
+                      Edit Profil
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      Ganti Password
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
