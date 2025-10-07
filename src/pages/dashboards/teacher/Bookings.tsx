@@ -64,16 +64,44 @@ export default function Bookings() {
     status: "confirmed" | "cancelled"
   ) => {
     try {
-      const { error } = await supabase
+      const { data: booking } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", bookingId)
+        .single();
+
+      if (!booking) throw new Error("Booking not found");
+
+      // Update booking status
+      const { error: bookingError } = await supabase
         .from("bookings")
         .update({ status })
         .eq("id", bookingId);
 
-      if (error) throw error;
+      if (bookingError) throw bookingError;
+
+      // If confirmed, create lesson record
+      if (status === "confirmed") {
+        const { error: lessonError } = await supabase
+          .from("lessons")
+          .insert([{
+            student_id: booking.student_id,
+            teacher_id: booking.tutor_id,
+            subject: booking.subject as any,
+            lesson_date: booking.booking_date,
+            duration_hours: booking.duration_hours,
+            hourly_rate: booking.hourly_rate,
+            total_amount: booking.total_amount,
+            notes: booking.notes || null,
+            status: 'pending' as any
+          }]);
+
+        if (lessonError) throw lessonError;
+      }
 
       toast({
-        title: "Success",
-        description: `Booking ${status} successfully`,
+        title: "Berhasil",
+        description: `Booking ${status === 'confirmed' ? 'dikonfirmasi' : 'dibatalkan'}`,
       });
       fetchBookings();
     } catch (error: any) {

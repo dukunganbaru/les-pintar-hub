@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Star, MapPin, GraduationCap, Clock, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import BookingDialog from '@/components/BookingDialog';
 
 const FindTeacher = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -15,6 +16,8 @@ const FindTeacher = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
 
   const subjects = [
     { value: 'matematika', label: 'Matematika' },
@@ -311,7 +314,13 @@ const FindTeacher = () => {
                           <Button variant="outline" size="sm">
                             Lihat Profil
                           </Button>
-                          <Button size="sm">
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTeacher(teacher);
+                              setIsBookingOpen(true);
+                            }}
+                          >
                             Pesan Les
                           </Button>
                         </div>
@@ -332,6 +341,15 @@ const FindTeacher = () => {
       </section>
 
       <Footer />
+
+      {selectedTeacher && (
+        <BookingDialog
+          open={isBookingOpen}
+          onOpenChange={setIsBookingOpen}
+          teacher={selectedTeacher}
+          onSuccess={fetchTeachers}
+        />
+      )}
     </div>
   );
 };
