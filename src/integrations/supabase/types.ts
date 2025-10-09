@@ -58,11 +58,13 @@ export type Database = {
       }
       bookings: {
         Row: {
+          admin_notes: string | null
           booking_date: string
           created_at: string
           duration_hours: number
           hourly_rate: number
           id: string
+          is_manual_booking: boolean
           notes: string | null
           parent_id: string
           status: Database["public"]["Enums"]["booking_status"]
@@ -75,11 +77,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_notes?: string | null
           booking_date: string
           created_at?: string
           duration_hours?: number
           hourly_rate: number
           id?: string
+          is_manual_booking?: boolean
           notes?: string | null
           parent_id: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -92,11 +96,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_notes?: string | null
           booking_date?: string
           created_at?: string
           duration_hours?: number
           hourly_rate?: number
           id?: string
+          is_manual_booking?: boolean
           notes?: string | null
           parent_id?: string
           status?: Database["public"]["Enums"]["booking_status"]

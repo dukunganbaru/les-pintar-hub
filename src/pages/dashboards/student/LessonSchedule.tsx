@@ -121,7 +121,14 @@ export default function LessonSchedule() {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
                         <div className="space-y-2">
-                          <h3 className="font-semibold text-lg">{booking.subject}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-lg">{booking.subject}</h3>
+                            {booking.is_manual_booking && (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                Manual
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-muted-foreground">
                             Guru: {booking.teachers?.profiles?.full_name}
                           </p>
@@ -144,6 +151,13 @@ export default function LessonSchedule() {
                       {booking.notes && (
                         <Alert className="mt-4">
                           <AlertDescription>{booking.notes}</AlertDescription>
+                        </Alert>
+                      )}
+                      {booking.admin_notes && (
+                        <Alert className="mt-2 bg-blue-50 border-blue-200">
+                          <AlertDescription>
+                            <strong className="text-blue-700">Catatan Admin:</strong> {booking.admin_notes}
+                          </AlertDescription>
                         </Alert>
                       )}
                     </CardContent>

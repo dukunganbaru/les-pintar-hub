@@ -11,6 +11,7 @@ import Blog from "./pages/Blog";
 import Referral from "./pages/Referral";
 import FindTeacher from "./pages/FindTeacher";
 import BecomeTeacher from "./pages/BecomeTeacher";
+import ManualBooking from "./pages/ManualBooking";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import AdminUserManagement from "./pages/dashboards/admin/UserManagement";
 import AdminTeacherVerification from "./pages/dashboards/admin/TeacherVerification";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/referral" element={<Referral />} />
             <Route path="/cari-pengajar" element={<FindTeacher />} />
             <Route path="/jadi-pengajar" element={<BecomeTeacher />} />
+            <Route path="/pesan-manual" element={<ManualBooking />} />
             <Route path="/dashboard/admin" element={<AdminDashboard />} />
             <Route path="/dashboard/admin/users" element={<AdminUserManagement />} />
             <Route path="/dashboard/admin/teachers" element={<AdminTeacherVerification />} />

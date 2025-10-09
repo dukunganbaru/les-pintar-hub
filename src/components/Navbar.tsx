@@ -63,6 +63,9 @@ const Navbar = () => {
             <Link to="/jadi-pengajar" className="text-foreground hover:text-primary transition-smooth font-medium">
               Jadi Pengajar
             </Link>
+            <Link to="/pesan-manual" className="text-foreground hover:text-primary transition-smooth font-medium">
+              Pesan Manual
+            </Link>
           </div>
 
           {/* Desktop CTA Buttons */}
@@ -150,6 +153,13 @@ const Navbar = () => {
                 onClick={() => setIsOpen(false)}
               >
                 Jadi Pengajar
+              </Link>
+              <Link
+                to="/pesan-manual"
+                className="block px-3 py-2 text-foreground hover:text-primary transition-smooth font-medium"
+                onClick={() => setIsOpen(false)}
+              >
+                Pesan Manual
               </Link>
               <div className="px-3 py-2 space-y-2">
                 {user ? (

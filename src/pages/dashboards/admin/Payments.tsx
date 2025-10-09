@@ -34,6 +34,9 @@ export default function Payments() {
           bookings (
             subject,
             booking_date,
+            is_manual_booking,
+            admin_notes,
+            status,
             teachers (
               profiles (full_name)
             )
@@ -189,6 +192,11 @@ export default function Payments() {
                   <TableRow key={payment.id}>
                     <TableCell className="font-mono text-sm">
                       {payment.id.substring(0, 8)}...
+                      {payment.bookings?.is_manual_booking && (
+                        <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                          Manual
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {payment.bookings?.subject || "-"}
